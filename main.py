@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from supabase import create_client, Client
 from starlette.status import HTTP_403_FORBIDDEN
+from fastapi.responses import FileResponse
 
 # ---------------------------------------------------------------------------
 # Environment & Supabase Init
@@ -82,7 +83,11 @@ def _row_to_response(row: dict) -> MusicianResponse:
 # ---------------------------------------------------------------------------
 # PUBLIC ROUTES (No Key Required)
 # ---------------------------------------------------------------------------
-
+@app.get("/", response_class=FileResponse)
+def read_index():
+    # This looks for the index.html file in your GitHub folder
+    return "index.html"
+    
 @app.get("/musicians", response_model=MusicianListResponse)
 def list_musicians(genre: Optional[str] = None, search: Optional[str] = None):
     query = supabase.table("musicians").select("*", count="exact")
