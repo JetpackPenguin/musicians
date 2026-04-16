@@ -120,9 +120,21 @@ def replace_musician(musician_id: int, payload: MusicianCreate):
 
 @app.patch("/musicians/{musician_id}", response_model=MusicianResponse, dependencies=[Depends(verify_admin_key)])
 def partially_update_musician(musician_id: int, payload: MusicianUpdate):
-    update_data = payload.model_dump(exclude_unset=True)
+    # 1. Convert to dict, stripping out anything the user didn't type
+    # 2. exclude_none=True ensures we don't send "null" to Supabase
+    update_data = payload.model_dump(exclude_unset=True, exclude_none=True)
+    
+    # 3. EXTRA SAFETY: Remove empty strings so we don't accidentally wipe data
+    update_data = {k: v for k, v in update_data.items() if v != ""}
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields provided for update")
+
     response = supabase.table("musicians").update(update_data).eq("id", musician_id).execute()
-    if not response.data: raise HTTPException(status_code=404, detail="Update failed")
+    
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Musician not found or update failed")
+        
     return _row_to_response(response.data[0])
 
 @app.delete("/musicians/{musician_id}", response_model=MessageResponse, dependencies=[Depends(verify_admin_key)])
